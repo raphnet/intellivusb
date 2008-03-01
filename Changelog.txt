@@ -1,0 +1,12 @@
+--- v1.0 (Mar 1, 2008)
+	- Initial release under GPLv2. 
+	- Supports Intellivision 1 controller wired as follows:
+	pin 1: PC5
+	pin 2: PC4
+	pin 3: PC3
+	pin 4: PC2
+	pin 5: PC1
+	pin 6: PC0
+	pin 7: PB5
+	pin 8: PB4
+	pin 9: PB3
