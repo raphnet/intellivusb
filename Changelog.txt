@@ -1,3 +1,6 @@
+--- v1.1 (Feb 11, 2016)
+	- Maintenance release: Fix compilation with modern toolchains
+
 --- v1.0 (Mar 1, 2008)
 	- Initial release under GPLv2. 
 	- Supports Intellivision 1 controller wired as follows:

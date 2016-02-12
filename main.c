@@ -37,9 +37,9 @@ static uchar rt_usbHidReportDescriptorSize=0;
 static uchar *rt_usbDeviceDescriptor=NULL;
 static uchar rt_usbDeviceDescriptorSize=0;
 
-PROGMEM int usbDescriptorStringSerialNumber[]  = {
+const PROGMEM int usbDescriptorStringSerialNumber[]  = {
  	USB_STRING_DESCRIPTOR_HEADER(4),
-	'1','0','0','0'
+	'1','0','0','8'
 };
 
 char usbDescriptorConfiguration[] = { 0 }; // dummy
@@ -191,24 +191,20 @@ int main(void)
 {
 	char must_report = 0, first_run = 1;
 	uchar   idleCounter = 0;
-	int run_mode;
 
 	// led pin as output
 //	DDRD |= 0x20;
 
 	/* Dip switch common: DB0, outputs: DB1 and DB2 */
 	DDRB |= 0x01;
-	DDRB &= ~0x06; 
-	
+	DDRB &= ~0x06;
+
 	PORTB |= 0x06; /* enable pull up on DB1 and DB2 */
 	PORTB &= ~0x01; /* Set DB0 to low */
 
-	_delay_ms(10); /* let pins settle */
-
-	run_mode = (PINB & 0x06)>>1;
 
 	curGamepad = intellivisionGetGamepad();
-	
+
 
 	// configure report descriptor according to
 	// the current gamepad
