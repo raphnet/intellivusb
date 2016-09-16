@@ -1,3 +1,6 @@
+--- v1.2 (September 16, 2016)
+    - Add Atmega168 support
+
 --- v1.1 (Feb 11, 2016)
 	- Maintenance release: Fix compilation with modern toolchains
 
