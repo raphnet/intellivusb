@@ -1,3 +1,9 @@
+--- v1.3 (October 7, 2016)
+    - Add support for 1+9 button combo
+	- Add support for extra buttons (based on combos)
+	- New USB VID/PID
+	- New name (Intellivision controller)
+
 --- v1.2 (September 16, 2016)
     - Add Atmega168 support
 

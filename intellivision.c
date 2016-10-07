@@ -1,5 +1,6 @@
 /* IntelliVUSB: Intellvision controller to USB adapter
- * Copyright (C) 2008 Raphaël Assénat
+ * Copyright (C) 2008-2016 Raphaël Assénat
+ * With contributions from mm
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,7 +26,7 @@
 #include "gamepad.h"
 #include "intellivision.h"
 
-#define REPORT_SIZE		4
+#define REPORT_SIZE		5
 
 
 /*********** prototypes *************/
@@ -98,11 +99,11 @@ static void readXY(char *x, char *y)
 
 }
 
-static void readController(char *x, char *y, unsigned short *btns)
+static void readController(char *x, char *y, unsigned short *btns, unsigned char *btns_extra)
 {
 	unsigned char cols;
 	unsigned char rows;
-	unsigned short b=0;
+	unsigned short b=0, b_extra=0;
 
 	char cur_x, cur_y;
 	static char last_x=0, last_y=0;
@@ -131,7 +132,7 @@ static void readController(char *x, char *y, unsigned short *btns)
 	PORTB |= 0x38; // bit 5 4 3 with pullup to read columns
 
 	_delay_ms(1); // stabilization delay
-	
+
 	rows = (PINB) >> 3;
 
 	// cols bits:
@@ -144,12 +145,12 @@ static void readController(char *x, char *y, unsigned short *btns)
 	// 0: 1 4 7 CLR
 	// 1: 2 5 8 0
 	// 2: 3 6 9 ENT
-	
+
 	rows ^= 0xff;
 	rows &= 0x07;
 	cols ^= 0xff;
 	cols &= 0x0f;
-	
+
 	switch (cols | (rows<<4))
 	{
 		case 0x11: b |= 1<<12; // CLR
@@ -178,9 +179,21 @@ static void readController(char *x, char *y, unsigned short *btns)
 					break;
 		case 0x48: b |= 1<<5; // 3
 					break;
+
+		// Button combos below contributed by mm
+		case 0x5a: b |= (1<<3) | (1<<11); break; // 1 + 9
+
+		// Extra buttons (triggered by combos).
+		case 0x15: b_extra = 0x01; break; // 4 + Clear
+		case 0x25: b_extra = 0x02; break; // 5 + 0
+		case 0x45: b_extra = 0x04; break; // 6 + Enter
+		case 0x6a: b_extra = 0x08; break; // 2 + 9
+		case 0x3a: b_extra = 0x10; break; // 2 + 7
+		case 0x35: b_extra = 0x20; break; // 0 + 4
+		case 0x65: b_extra = 0x40; break; // 0 + 6
+		case 0x55: b_extra = 0x80; break; // 4 + Enter
 	}
 
-	
 	PORTC=0;
 	DDRC=0;
 	PORTC=0xff;
@@ -189,7 +202,7 @@ static void readController(char *x, char *y, unsigned short *btns)
 	PORTB =0;
 	DDRB = 0x08; // PB3 low to pull  R1+L1 or R2
 	PORTB |= 0x30; // PB4 and PB5 with pullup
-	
+
 	_delay_ms(1); // stabilization delay
 
 	cols = PINB & 0x30;
@@ -198,12 +211,12 @@ static void readController(char *x, char *y, unsigned short *btns)
 		b |= 1<<2;
 	if (! (cols & 0x20) )
 		b |= 1<<0;
-	
+
 	// one last button
 	PORTB = 0;
 	DDRB = 0x10; // PB4 low to pull L2
 	PORTB |= 0x20; // L2 goes to PB5
-	
+
 	_delay_ms(1); // stabilization delay
 
 	cols = PINB & 0x20;
@@ -211,6 +224,7 @@ static void readController(char *x, char *y, unsigned short *btns)
 		b |= 1<<1;
 
 	*btns = b;
+	*btns_extra = b_extra;
 
 	if (b & 0xfff8)  {
 		// Interfering buttons
@@ -219,8 +233,8 @@ static void readController(char *x, char *y, unsigned short *btns)
 		*y = last_y;
 	}
 	else {
-		// perform a second direction read. To debounce...	
-	
+		// perform a second direction read. To debounce...
+
 		readXY(x, y);
 		/* If the two values we just read disagree, use the last known stable value */
 		if (*x != cur_x) {
@@ -233,9 +247,7 @@ static void readController(char *x, char *y, unsigned short *btns)
 		} else {
 			last_y = cur_y;
 		}
-
 	}
-
 }
 
 static void intellivisionInit(void)
@@ -244,8 +256,7 @@ static void intellivisionInit(void)
 	sreg = SREG;
 	cli();
 
-
-	/* 
+	/*
 	 * PC5: pin 1 (disc common)
 	 * PC4: pin 2
 	 * PC3: pin 3
@@ -285,40 +296,23 @@ static void intellivisionUpdate(void)
 {
 	char x,y;
 	unsigned short btns;
+	unsigned char btns_extra;
 
-	readController(&x, &y, &btns);
+	readController(&x, &y, &btns, &btns_extra);
 
 	last_read_controller_bytes[0]=(x*63) + 128;
 	last_read_controller_bytes[1]=(y*63) + 128;
  	last_read_controller_bytes[2]=btns & 0xff;
  	last_read_controller_bytes[3]=(btns & 0xff00) >> 8;
-/*
-	if (data[0] & 0x02) // btn 0
-		last_read_controller_bytes[2] |= 0x01;
-	if (data[0] & 0x01) // btn 1
-		last_read_controller_bytes[2] |= 0x02;
-	if (data[1] & 0x20) // btn 2
-		last_read_controller_bytes[2] |= 0x04;
-	if (data[1] & 0x10) // btn 3
-		last_read_controller_bytes[2] |= 0x08;
-	if (data[1] & 0x08) // btn 4
-		last_read_controller_bytes[2] |= 0x10;
-	if (data[1] & 0x04) // btn 5
-		last_read_controller_bytes[2] |= 0x20;
-	if (data[1] & 0x02) // btn 6
-		last_read_controller_bytes[2] |= 0x40;
-	if (data[1] & 0x01) // btn 7
-		last_read_controller_bytes[2] |= 0x80;
-*/
-
-}	
+	last_read_controller_bytes[4]=btns_extra;
+}
 
 static char intellivisionChanged(void)
 {
 	static int first = 1;
 	if (first) { first = 0;  return 1; }
-	
-	return memcmp(last_read_controller_bytes, 
+
+	return memcmp(last_read_controller_bytes,
 					last_reported_controller_bytes, REPORT_SIZE);
 }
 
@@ -328,16 +322,46 @@ static void intellivisionBuildReport(unsigned char *reportBuffer)
 	{
 		memcpy(reportBuffer, last_read_controller_bytes, REPORT_SIZE);
 	}
-	memcpy(last_reported_controller_bytes, 
-			last_read_controller_bytes, 
-			REPORT_SIZE);	
+	memcpy(last_reported_controller_bytes,
+			last_read_controller_bytes,
+			REPORT_SIZE);
 }
 
-#include "report_desc_2axe_16btn.c"
+/*
+ * [0] X
+ * [1] Y
+ * [2] Btn 0-7
+ * [3] Btn 8-15
+ * [4] Btn 16-23
+ */
+static const char usbHidReportDescriptor_2axes_24btn[] PROGMEM = {
+    0x05, 0x01,                    // USAGE_PAGE (Generic Desktop)
+    0x09, 0x05,                    // USAGE (Game Pad)
+    0xa1, 0x01,                    // COLLECTION (Application)
+    0x09, 0x01,                    //   USAGE (Pointer)
+    0xa1, 0x00,                    //   COLLECTION (Physical)
+    0x09, 0x30,                    //     USAGE (X)
+    0x09, 0x31,                    //     USAGE (Y)
+    0x15, 0x00,                    //   LOGICAL_MINIMUM (0)
+    0x26, 0xff, 0x00,              //     LOGICAL_MAXIMUM (255)
+    0x75, 0x08,                    //   REPORT_SIZE (8)
+    0x95, 0x02,                    //   REPORT_COUNT (2)
+    0x81, 0x02,                    //   INPUT (Data,Var,Abs)
+    0xc0,                          // END_COLLECTION
+    0x05, 0x09,                    // USAGE_PAGE (Button)
+    0x19, 0x01,                    //   USAGE_MINIMUM (Button 1)
+    0x29, 24,                    //   USAGE_MAXIMUM (Button 24)
+    0x15, 0x00,                    //   LOGICAL_MINIMUM (0)
+    0x25, 0x01,                    //   LOGICAL_MAXIMUM (1)
+    0x75, 0x01,                    // REPORT_SIZE (1)
+    0x95, 24,                    // REPORT_COUNT (24)
+    0x81, 0x02,                    // INPUT (Data,Var,Abs)
+    0xc0                           // END_COLLECTION
+};
 
 Gamepad intellivisionGamepad = {
 	report_size: 		REPORT_SIZE,
-	reportDescriptorSize:	sizeof(usbHidReportDescriptor_2axe_16btn),
+	reportDescriptorSize:	sizeof(usbHidReportDescriptor_2axes_24btn),
 	init: 			intellivisionInit,
 	update: 		intellivisionUpdate,
 	changed:		intellivisionChanged,
@@ -346,8 +370,7 @@ Gamepad intellivisionGamepad = {
 
 Gamepad *intellivisionGetGamepad(void)
 {
-	intellivisionGamepad.reportDescriptor = (void*)usbHidReportDescriptor_2axe_16btn;
+	intellivisionGamepad.reportDescriptor = (void*)usbHidReportDescriptor_2axes_24btn;
 
 	return &intellivisionGamepad;
 }
-
