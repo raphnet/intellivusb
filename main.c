@@ -1,5 +1,5 @@
 /* IntelliVUSB: Intellvision controller to USB adapter
- * Copyright (C) 2008 Raphaël Assénat
+ * Copyright (C) 2008-2016 Raphaël Assénat
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
