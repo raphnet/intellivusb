@@ -1,6 +1,7 @@
 /* IntelliVUSB: Intellvision controller to USB adapter
  * Copyright (C) 2008-2016 Raphaël Assénat
- * With contributions from mm
+ *
+ * With contributions from 'mm'
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -151,6 +152,8 @@ static void readController(char *x, char *y, unsigned short *btns, unsigned char
 	cols ^= 0xff;
 	cols &= 0x0f;
 
+	// 7 6 5 4 3 2 1 0
+	//   [row] [ col ]
 	switch (cols | (rows<<4))
 	{
 		case 0x11: b |= 1<<12; // CLR
